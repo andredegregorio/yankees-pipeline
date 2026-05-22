@@ -13,15 +13,17 @@ def fetch_roster_data(team_id):
 		print(f"Error fetching roster data: {e}")
 		return None
 	
-def upload_to_s3(data, team_id):
+def upload_to_s3(data, path):
 	s3 = boto3.client('s3')
 	s3.put_object(
 		Bucket='yankees-pipeline-andre',
-		Key=f'raw/rosters/{datetime.now().strftime("%Y-%m-%d")}/team_{team_id}_roster.json',
+		Key=path,
 		Body=json.dumps(data)
 		)
 
 if __name__ == '__main__':
-    roster = fetch_roster_data(147)
-    if roster:
-        upload_to_s3(roster, 147)
+	roster = fetch_roster_data(147)
+	if roster:
+		today = datetime.today().strftime('%Y-%m-%d')
+		path = f'raw/rosters/{today}/team_147_roster.json'
+		upload_to_s3(roster, path)
