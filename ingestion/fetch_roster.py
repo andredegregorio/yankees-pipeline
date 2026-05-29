@@ -4,6 +4,9 @@ import argparse
 from utils import get_affiliate_team_ids, upload_to_s3, BASE_URL
 
 def fetch_roster_data(team_id):
+	'''
+	Fetches roster data for a given team ID and returns the JSON response.
+	'''
 	try:
 		response = requests.get(f'{BASE_URL}/teams/{team_id}/roster')
 		response.raise_for_status()
