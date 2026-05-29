@@ -1,10 +1,14 @@
-from fetch_roster import fetch_roster_data, upload_to_s3
+from fetch_roster import fetch_roster_data, get_affiliate_team_ids, upload_to_s3
 import requests
 from datetime import datetime
+import argparse
+
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
 def fetch_player_info(team_id):
+	teams = get_affiliate_team_ids(parent_team_id)
+
 	roster = fetch_roster_data(team_id)
 	if not roster:
 		print("Failed to fetch roster data.")
