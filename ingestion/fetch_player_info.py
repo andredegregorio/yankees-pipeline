@@ -21,16 +21,18 @@ def fetch_player_info(team_id):
 		player_id = player.get("person", {}).get("id")
 		if not player_id:
 			continue
-			
+
+		player_name = player.get("person", {}).get("fullName", "Unknown")
+		print(f"  Fetching player info for player ID: {player_name}...")
+
 		try:
-			print(f"  Fetching player info for player ID: {player_id}...")
 			response = requests.get(f"{BASE_URL}/people/{player_id}")
 			response.raise_for_status()
 			data = response.json()
 			path = f"raw/player_info/{today}/player_{player_id}.json"
 			upload_to_s3(data, path)
 		except Exception as e:
-			print(f"Error fetching player info for player {player_id}: {e}")
+			print(f"Error fetching player info for player {player_name}: {e}")
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
