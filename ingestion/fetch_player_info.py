@@ -1,13 +1,14 @@
-from fetch_roster import fetch_roster_data, get_affiliate_team_ids, upload_to_s3
 import requests
 from datetime import datetime
 import argparse
+from utils import get_affiliate_team_ids, upload_to_s3, BASE_URL
+from fetch_roster import fetch_roster_data
 
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
-
-def fetch_player_info(team_id):
-	teams = get_affiliate_team_ids(parent_team_id)
+def fetch_player_info(team_id): 
+	'''
+	Fetches player info for all players on the roster of a given team and uploads to S3.
+	'''
 
 	roster = fetch_roster_data(team_id)
 	if not roster:
@@ -22,6 +23,7 @@ def fetch_player_info(team_id):
 			continue
 			
 		try:
+			print(f"  Fetching player info for player ID: {player_id}...")
 			response = requests.get(f"{BASE_URL}/people/{player_id}")
 			response.raise_for_status()
 			data = response.json()
@@ -31,4 +33,14 @@ def fetch_player_info(team_id):
 			print(f"Error fetching player info for player {player_id}: {e}")
 
 if __name__ == "__main__":
-	fetch_player_info(147)  # Fetch player info for the New York Yankees (team ID 147)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--org', type=int, default=147)
+	args = parser.parse_args()
+
+	print(f"Fetching player info for org {args.org}...")
+	teams = get_affiliate_team_ids(args.org)
+
+	for t in teams:
+		fetch_player_info(t['id'])
+
+	print("\nDone.")
