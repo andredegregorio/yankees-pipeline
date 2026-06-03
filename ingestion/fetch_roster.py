@@ -8,7 +8,7 @@ def fetch_roster_data(team_id):
 	Fetches roster data for a given team ID and returns the JSON response.
 	'''
 	try:
-		response = requests.get(f'{BASE_URL}/teams/{team_id}/roster/rosterType=fullSeason')
+		response = requests.get(f'{BASE_URL}/teams/{team_id}/roster/?rosterType=fullSeason')
 		response.raise_for_status()
 		data = response.json()
 		player_count = len(data.get('roster', []))
