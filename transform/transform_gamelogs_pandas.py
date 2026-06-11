@@ -151,9 +151,11 @@ def transform_hitters(df):
                             for p in x) if isinstance(x, list) else '')
     return df
 
-def latest_date(prefix):
+def latest_date(prefix=RAW_PREFIX + "/"):
+    '''Newest date= folder directly under game_logs/.'''
     resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix, Delimiter="/")
-    dates = [p["Prefix"].split("date=")[1].strip("/") for p in resp.get("CommonPrefixes", [])]
+    dates = [p["Prefix"].rstrip("/").split("/")[-1]
+             for p in resp.get("CommonPrefixes", [])]
     return max(dates)  # ISO strings sort correctly
 
 def process_group(group, cols, mapping, transform_fn, date):
@@ -173,20 +175,21 @@ def process_group(group, cols, mapping, transform_fn, date):
         date:         partition to process (YYYY-MM-DD).
     '''
     # extract
-    prefix = f"{RAW_PREFIX}/{group}/date={date}/"
+    prefix = f"{RAW_PREFIX}/{date}/"
     resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
-    keys = [o["Key"] for o in resp.get("Contents", [])]
+    keys = [o["Key"] for o in resp.get("Contents", [])
+            if o["Key"].endswith(f"_{group}.json")]
     if not keys:
-        logger.warning("no files under %s, skipping", prefix)
+        logger.warning("no %s files under %s, skipping", group, prefix)
         return
-
+ 
     dfs = []
     for key in keys:
         obj = s3.get_object(Bucket=BUCKET, Key=key)
         df = pd.json_normalize(json.loads(obj["Body"].read()))
         dfs.append(df)
     df = pd.concat(dfs, ignore_index=True)
-
+ 
     # transform
     missing = set(cols) - set(df.columns)
     if missing:
@@ -194,18 +197,18 @@ def process_group(group, cols, mapping, transform_fn, date):
     df = df.reindex(columns=cols).copy()
     df = df.rename(columns=mapping)
     df['game_date'] = pd.to_datetime(df['game_date'], format='%Y-%m-%d')
-    df['season'] = df['season'].astype(int)
-
+    df['season'] = df['season'].astype('Int64')
+ 
     if transform_fn:
         df = transform_fn(df)
-    
+ 
     # load
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
     buf.seek(0)
-    key = f"{OUT_PREFIX}/{group}/date={date}/data.parquet"
-    s3.put_object(Bucket=BUCKET, Key=key, Body=buf.getvalue())
-    logger.info("Processed %d rows for %s on %s, output to %s", len(df), group, date, key)
+    out_key = f"{OUT_PREFIX}/{group}/date={date}/data.parquet"
+    s3.put_object(Bucket=BUCKET, Key=out_key, Body=buf.getvalue())
+    logger.info("Processed %d rows for %s on %s, output to %s", len(df), group, date, out_key)
 
 def main(date=None):
     logging.basicConfig(level=logging.INFO)
