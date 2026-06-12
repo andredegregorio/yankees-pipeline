@@ -186,10 +186,10 @@ def process_group(group, cols, mapping, transform_fn, date):
     dfs = []
     for key in keys:
         obj = s3.get_object(Bucket=BUCKET, Key=key)
-        df = pd.json_normalize(json.loads(obj["Body"].read()))
+        df = pd.json_normalize(json.loads(obj["Body"].read()), record_path=["stats", "splits"])
         dfs.append(df)
     df = pd.concat(dfs, ignore_index=True)
- 
+
     # transform
     missing = set(cols) - set(df.columns)
     if missing:
@@ -197,8 +197,7 @@ def process_group(group, cols, mapping, transform_fn, date):
     df = df.reindex(columns=cols).copy()
     df = df.rename(columns=mapping)
     df['game_date'] = pd.to_datetime(df['game_date'], format='%Y-%m-%d')
-    df['season'] = df['season'].astype('Int64')
- 
+    df['season'] = pd.to_numeric(df['season']).astype('Int64')
     if transform_fn:
         df = transform_fn(df)
  
@@ -213,7 +212,7 @@ def process_group(group, cols, mapping, transform_fn, date):
 def main(date=None):
     logging.basicConfig(level=logging.INFO)
     if date is None:
-        date = latest_date(f"{RAW_PREFIX}/hitting/")
+        date = latest_date()
     logger.info("processing date=%s", date)
     process_group("hitting", HITTING_COLS, HITTING_MAP, transform_hitters, date)
     process_group("pitching", PITCHING_COLS, PITCHING_MAP, None, date)
